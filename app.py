@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import gradio as gr
+from fastapi import FastAPI
 
 import coach
 import embedder
@@ -233,8 +234,20 @@ with gr.Blocks(title="SkillBridge", delete_cache=(1800, 3600)) as demo:
     hours.change(replan, [ok, session, hours], [score_html, plan_html, download], trigger_mode="always_last", **P)
     coach_btn.click(run_coach, [ok, session, hours], [session, coach_out, download], **P)
 
+api = FastAPI(title="SkillBridge")
+
+
+@api.get("/health")
+def health():
+    return {"status": "ok", "embedder": embedder.status()}
+
+
+api = gr.mount_gradio_app(
+    api, demo.queue(default_concurrency_limit=8), path="/",
+    theme=theme, css=(HERE / "style.css").read_text(encoding="utf-8"), head=HEAD,
+    ssr_mode=False, footer_links=[])
+
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=8).launch(
-        theme=theme, css=(HERE / "style.css").read_text(encoding="utf-8"), head=HEAD,
-        ssr_mode=False, footer_links=[], server_name=os.getenv("HOST", "0.0.0.0"),
-        server_port=int(os.getenv("PORT", "7860")))
+    import uvicorn
+
+    uvicorn.run(api, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "7860")))
