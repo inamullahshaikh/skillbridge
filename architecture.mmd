@@ -1,0 +1,44 @@
+flowchart TB
+    U(["Job seeker"]) -->|"sign in, resume + job post"| UI["Gradio web app<br/>on Hugging Face Spaces"]
+
+    subgraph INGEST["1. Ingest"]
+        RP["Resume parser<br/>pypdf, python-docx"]
+        JP["Job post parser<br/>required vs nice-to-have,<br/>'X or Y' groups, years asked"]
+    end
+
+    subgraph UNDERSTAND["2. Understand"]
+        TX[("Skill taxonomy<br/>120+ skills: aliases, prerequisites,<br/>adjacent skills, free resources")]
+        SX["Skill extractor<br/>patterns + evidence lines,<br/>inferred and basic-level skills"]
+        EM["Semantic matcher<br/>BGE-small-en-v1.5 embeddings<br/>via fastembed, ONNX on CPU"]
+    end
+
+    subgraph DECIDE["3. Decide"]
+        SC["Match scorer<br/>weighted skill coverage<br/>+ experience fit"]
+        PB["Plan builder<br/>score gain per study hour,<br/>prerequisites first, weekly packing"]
+    end
+
+    subgraph COACH["4. Coach"]
+        LLM["LLM coach<br/>Llama 3.3 70B, open weights<br/>via Groq, HF or local Ollama"]
+        RB["Rule-based coach<br/>fallback, always available"]
+    end
+
+    UI --> RP
+    UI --> JP
+    RP --> SX
+    JP --> SX
+    TX --> SX
+    RP --> EM
+    JP --> EM
+    SX --> SC
+    EM -->|"similar experience,<br/>other requirements"| SC
+    SC --> PB
+    TX --> PB
+    SC --> LLM
+    PB --> LLM
+    LLM -. "no key or error" .-> RB
+
+    PB --> OUT["Results<br/>score, bridge chart, skills with evidence,<br/>week-by-week plan"]
+    LLM --> OUT
+    RB --> OUT
+    OUT --> UI
+    OUT --> MD["Markdown report<br/>download"]
